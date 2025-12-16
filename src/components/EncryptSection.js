@@ -1,43 +1,9 @@
 // EncryptSection.js
 import { useEffect, useState } from "react";
-import { parseGIF, decompressFrames } from "gifuct-js";
-import createGIF from "./ToGIF";
+import ToGIF from "./ToGIF";
+import ToBits from "./ToBits";
 import ToBinary from "./ToBinary";
 import '../stylesheets/Frames.css';
-
-// Extract frames and bits from GIF
-async function extractedBits(file, setFrames, setError, setAllBits) {
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const gif = parseGIF(arrayBuffer);
-    const decompressedFrames = decompressFrames(gif, true);
-
-    const logicalWidth = gif.lsd.width;
-    const logicalHeight = gif.lsd.height;
-
-    const safeFrames = decompressedFrames.map(frame => ({
-      ...frame,
-      width: logicalWidth,
-      height: logicalHeight,
-    }));
-
-    setFrames(safeFrames);
-
-    const allBits = safeFrames.map(frame => {
-      let bits = '';
-      for (let i = 0; i < frame.patch.length; i += 4) {
-        bits += `${frame.patch[i]}${frame.patch[i + 1]}${frame.patch[i + 2]}${frame.patch[i + 3]}`;
-        if ((i + 4) % (frame.width * 4) === 0) bits += '\n';
-      }
-      return bits;
-    });
-
-    setAllBits(allBits);
-  } catch (err) {
-    console.error(err);
-    setError('Failed to parse GIF file.');
-  }
-}
 
 // Generate preview images for frames
 async function generateFramePreviews(frames, setFramePreviews) {
@@ -115,6 +81,8 @@ export default function EncryptSection() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   const [selectedFrame, setSelectedFrame] = useState(null);
+  const [allBits, setAllBits] = useState([]);
+
 
   const handleGIFChange = (event) => {
     const file = event.target.files[0];
@@ -141,7 +109,7 @@ export default function EncryptSection() {
     if (!frames.length || !message) return;
 
     const { encodedFrames, logText } = lsbEncodeWithLog(frames, message);
-    const gifURL = await createGIF(encodedFrames);
+    const gifURL = await ToGIF(encodedFrames);
 
     // Download GIF
     const a = document.createElement('a');
@@ -160,7 +128,13 @@ export default function EncryptSection() {
   };
 
   useEffect(() => {
-    if (file) extractedBits(file, setFrames, setError, () => { });
+    if (!file) return;
+    ToBits(file)
+      .then(({ frames: extractedFrames, allBits }) => {
+        setFrames(extractedFrames);
+        setAllBits(allBits);
+      })
+      .catch(err => setError(err.message));
   }, [file]);
 
   useEffect(() => {

@@ -3,7 +3,7 @@
 
 import GIF from 'gif.js';
 
-export default async function createGIF(frames, delay = 100) {
+export default async function ToGIF(frames, delay = 100) {
   return new Promise((resolve) => {
     const gif = new GIF({
       workers: 2,
