@@ -13,12 +13,11 @@ async function generateFramePreviews(frames, setFramePreviews) {
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext("2d");
+    const context = canvas.getContext("2d");
 
-    const imageData = ctx.createImageData(width, height);
+    const imageData = context.createImageData(width, height);
     imageData.data.set(patch);
-    ctx.putImageData(imageData, 0, 0);
-
+    context.putImageData(imageData, 0, 0);
     previews.push(canvas.toDataURL("image/png"));
   }
   setFramePreviews(previews);
@@ -43,7 +42,7 @@ const handleFrameClick = (frame, i, setSelectedFrame) => {
 };
 
 // LSB encode with logging
-const lsbEncodeWithLog = (frames, message) => {
+/*const lsbEncodeWithLog = (frames, message) => {
   const encodedFrames = [...frames];
   let messageIndex = 0;
   const logLines = [];
@@ -69,7 +68,53 @@ const lsbEncodeWithLog = (frames, message) => {
   }
 
   return { encodedFrames, logText: logLines.join('\n') };
+};*/
+const HEADER_PATTERN = "10101011"; // 8-bit header
+
+// Spatial encoding for message
+const spatialEncode = (frames, message) => {
+  const encodedFrames = [...frames];
+  let messageIndex = 0;
+
+  for (const frame of encodedFrames) {
+    const patch = frame.patch;
+    for (let i = 0; i < patch.length; i += 4) {
+      if (messageIndex >= message.length) break;
+      patch[i + 2] = (patch[i + 2] & ~1) | (message[messageIndex] === '1' ? 1 : 0);
+      messageIndex++;
+    }
+    if (messageIndex >= message.length) break;
+  }
+
+  return encodedFrames;
 };
+
+// Temporal encoding for metadata with header (8 bits in first frame)
+const temporalEncode = (frames, metadataBits) => {
+  const encodedFrames = [...frames];
+
+  // Encode header in first 8 pixels
+  const firstFrame = encodedFrames[0];
+  for (let i = 0; i < HEADER_PATTERN.length; i++) {
+    firstFrame.patch[i * 4 + 2] = (firstFrame.patch[i * 4 + 2] & ~1) | (HEADER_PATTERN[i] === '1' ? 1 : 0);
+  }
+
+  // Encode metadata after header
+  let bitIndex = 0;
+  for (let frameIndex = 0; frameIndex < encodedFrames.length; frameIndex++) {
+    const frame = encodedFrames[frameIndex];
+    const startPixel = frameIndex === 0 ? 8 : 0; // skip first 8 pixels in frame 0
+    for (let i = startPixel * 4; i < frame.patch.length; i += 4) {
+      if (bitIndex >= metadataBits.length) break;
+      frame.patch[i + 2] = (frame.patch[i + 2] & ~1) | (metadataBits[bitIndex] === '1' ? 1 : 0);
+      bitIndex++;
+    }
+    if (bitIndex >= metadataBits.length) break;
+  }
+
+  return encodedFrames;
+};
+
 
 // Main component
 export default function EncryptSection() {
@@ -78,11 +123,10 @@ export default function EncryptSection() {
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState('');
   const [messageFile, setMessageFile] = useState(null);
-  const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   const [selectedFrame, setSelectedFrame] = useState(null);
-  const [allBits, setAllBits] = useState([]);
-
+  const [password, setPassword] = useState("");
+  const [payload, setPayload] = useState(null);
 
   const handleGIFChange = (event) => {
     const file = event.target.files[0];
@@ -96,44 +140,49 @@ export default function EncryptSection() {
     setFileName(file.name);
   };
 
-  const handleMessageFileChange = (event) => {
+  const handleMessageFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    setError(null);
     setMessageFile(file);
-    ToBinary(file).then(binfile => {
-      setMessage(binfile);
-    });
+
+    try {
+      const encryptedPayload = await ToBinary(file, password);
+      setPayload(encryptedPayload);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const handleEncrypt = async () => {
-    if (!frames.length || !message) return;
+    if (!frames.length || !payload) return;
 
-    const { encodedFrames, logText } = lsbEncodeWithLog(frames, message);
-    const gifURL = await ToGIF(encodedFrames);
+    const metadataWithHeader = HEADER_PATTERN + payload.metabits;
+    // Encode message spatially
+    const spatialFrames = spatialEncode(frames, payload.bits);
+    // Encode metadata temporally
+    const finalFrames = temporalEncode(spatialFrames, metadataWithHeader);
 
-    // Download GIF
-    const a = document.createElement('a');
+    const gifURL = await ToGIF(finalFrames);
+    const a = document.createElement("a");
     a.href = gifURL;
     a.download = `encrypted_${fileName}`;
     a.click();
 
-    // Download log file
-    const blob = new Blob([logText], { type: "text/plain" });
-    const logURL = URL.createObjectURL(blob);
-    const b = document.createElement("a");
-    b.href = logURL;
-    b.download = "encoded_values.txt";
-    b.click();
-    URL.revokeObjectURL(logURL);
+    if (metadataWithHeader) {
+      const blob = new Blob([metadataWithHeader], { type: "text/plain" });
+      const metaLink = document.createElement("a");
+      metaLink.href = URL.createObjectURL(blob);
+      metaLink.download = `metadata_binary.txt`;
+      metaLink.click();
+    }
   };
 
   useEffect(() => {
     if (!file) return;
-    ToBits(file)
-      .then(({ frames: extractedFrames, allBits }) => {
-        setFrames(extractedFrames);
-        setAllBits(allBits);
-      })
+    ToBits(file).then(({ frames: extractedFrames }) => {
+      setFrames(extractedFrames);
+    })
       .catch(err => setError(err.message));
   }, [file]);
 
@@ -141,6 +190,23 @@ export default function EncryptSection() {
     if (frames.length === 0) return;
     generateFramePreviews(frames, setFramePreviews);
   }, [frames]);
+
+  useEffect(() => {
+    if (!messageFile || !password) {
+      setPayload(null);
+      return;
+    }
+
+    (async () => {
+      try {
+        const encryptedPayload = await ToBinary(messageFile, password);
+        setPayload(encryptedPayload);
+      } catch (err) {
+        setError(err.message);
+        setPayload(null);
+      }
+    })();
+  }, [messageFile, password]);
 
   return (
     <div>
@@ -150,7 +216,14 @@ export default function EncryptSection() {
       <input type="file" onChange={handleMessageFileChange} />
       {messageFile && <p>Message file: {messageFile.name}</p>}
 
-      {file && messageFile && (
+      <input
+        type="password"
+        placeholder="Enter encryption password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      {file && messageFile && password && payload && (
         <button onClick={handleEncrypt}>Encrypt Message</button>
       )}
 
