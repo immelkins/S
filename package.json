@@ -2,7 +2,7 @@
   "name": "my-app",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://immelkins.github.io/S",  // <-- Add this line
+  "homepage": "https://immelkins.github.io/S",
   "dependencies": {
     "gif.js": "^0.2.0",
     "gifuct-js": "^2.1.2",
