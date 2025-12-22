@@ -1,6 +1,6 @@
 import { useState } from "react";
 import "../stylesheets/Home.css";
-import DecryptSection from "../components/DecryptSection";
+import Decryption from "../components/Decryption";
 
 function Decrypt() {
   return ( 
@@ -20,7 +20,7 @@ function Decrypt() {
         </div>
       </section>
 
-      <DecryptSection />
+      <Decryption />
     </div>
   );
 }

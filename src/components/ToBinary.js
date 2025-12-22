@@ -1,47 +1,62 @@
 // ToBinary.js
-import { encryptData } from "./ToBlackBox";
+import Hamming from "hamming-code"; // make sure to npm install hamming-code
 
-export default async function ToBinary(file, password) {
+function uint8ArrayToBitArray(bytes) {
+  const bits = [];
+  for (const byte of bytes) {
+    for (let i = 7; i >= 0; i--) 
+      { bits.push((byte >> i) & 1); }
+  }
+  return bits;
+}
+
+function stringToBitArray(str) {
+  const bits = [];
+  for (let i = 0; i < str.length; i++) {
+    const byte = str.charCodeAt(i);
+    for (let j = 7; j >= 0; j--) 
+      { bits.push((byte >> j) & 1); }
+  }
+  return bits;
+}
+
+function numberTo32BitArray(num) {
+  const bits = [];
+  for (let i = 31; i >= 0; i--) 
+    { bits.push((num >> i) & 1); }
+  return bits;
+}
+
+export default async function ToBinary(file) {
   if (!file) throw new Error("No file provided");
-  if (!password || password.trim() === "") throw new Error("Password is required for encryption");
-
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
 
-  // Convert file content to binary
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += bytes[i].toString(2).padStart(8, '0');
-  }
+  // Convert raw bytes to bits and encode messageBits with Hamming ECC
+  let messageBits = uint8ArrayToBitArray(bytes);
+  const messageBitString = messageBits.join("");                      // Convert array to string
+  const encodedBitString = Hamming.encode(messageBitString);          // Hamming encode
+  messageBits = encodedBitString.split("").map(b => parseInt(b, 10)); // Back to array
 
-  const { encryptedData, iv, salt } = await encryptData(binary, password);
-  const encryptedBinary = Array.from(encryptedData)
-    .map(byte => byte.toString(2).padStart(8, '0'))
-    .join('');
+  // Add 32-bit length for message
+  const lengthMessageBits = numberTo32BitArray(messageBits.length);
+  const messageLoadBits = [...lengthMessageBits, ...messageBits];
 
-  // Metadata object
+  // Create metadata object
   const metadata = {
-    iv,
-    salt,
-    originalLength: binary.length,
+    originalLength: bytes.length,
     fileName: file.name,
     fileType: file.type,
+    messageBitsLength: messageBits.length, 
   };
 
-  // Convert metadata to binary
+  // Convert metadata to bits
   const metadataStr = JSON.stringify(metadata);
-  let metadataBinary = '';
-  for (let i = 0; i < metadataStr.length; i++) {
-    metadataBinary += metadataStr.charCodeAt(i).toString(2).padStart(8, '0');
-  }
+  const metadataBits = stringToBitArray(metadataStr);
 
-  // Add 32-bit length header at the start
-  const metadataLength = metadataBinary.length; // in bits
-  const lengthBinary = metadataLength.toString(2).padStart(32, '0');
-  metadataBinary = lengthBinary + metadataBinary;
+  // Add 32-bit metadata length prefix
+  const lengthMetaBits = numberTo32BitArray(metadataBits.length);
+  const fullMetadataBits = [...lengthMetaBits, ...metadataBits];
 
-  return {
-    bits: encryptedBinary,
-    metabits: metadataBinary,
-  };
+  return { bits: messageLoadBits, metabits: fullMetadataBits };
 }

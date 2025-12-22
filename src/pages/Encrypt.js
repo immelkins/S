@@ -1,7 +1,7 @@
 // Encrypt.js
 import { useState } from "react";
 import "../stylesheets/Home.css";
-import EncryptSection from "../components/EncryptSection";
+import Encryption from "../components/Encryption";
 
 function Encrypt() {
 
@@ -23,7 +23,7 @@ function Encrypt() {
         </div>
       </section>
 
-      <EncryptSection />    {/* GIFUpload and FramePreview */}
+      <Encryption />    {/* GIFUpload and FramePreview */}
     </div>
   );
 }
