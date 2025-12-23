@@ -5,8 +5,10 @@ import ToBits from "./ToBits";
 import ToBinary from "./ToBinary";
 import "../stylesheets/Frames.css";
 import "../stylesheets/Popup.css";
+import "../stylesheets/Upload.css";
 
-const HEADER_BITS = [1,0,1,0,1,0,1,1];
+
+const HEADER_BITS = [1, 0, 1, 0, 1, 0, 1, 1];
 const PIXELS_PER_CHUNK = 500;
 
 async function generateFramePreviews(frames, setFramePreviews) {
@@ -195,13 +197,30 @@ export default function Encryption() {
 		<div>
 			<h2>GIF Message Encryption</h2>
 
-			<input type="file" accept="image/gif" onChange={handleGIFChange} />
-			<input type="file" onChange={handleMessageFileChange} />
+			<div className="upload-section">
+				{/* GIF Upload */}
+				<label className="file-upload">
+					<input type="file" accept="image/gif" onChange={handleGIFChange} hidden/>
+					<span className="file-button">Choose GIF</span>
+					<span className="file-name">
+						{gifFile ? gifFile.name : "No file chosen"}
+					</span>
+				</label>
+
+				{/* Message Upload */}
+				<label className="file-upload">
+					<input type="file" onChange={handleMessageFileChange} hidden/>
+					<span className="file-button">Choose Message File</span>
+					<span className="file-name">
+						{messageFile ? messageFile.name : "No file chosen"}
+					</span>
+				</label>
+			</div>
 
 			{frames.length > 0 && <p>{frames.length} frames extracted from GIF</p>}
 
 			{payload && frames.length > 0 && (
-				<button onClick={handleEncrypt}>Encrypt Message</button>
+				<button className="file-button" onClick={handleEncrypt}>Encrypt Message</button>
 			)}
 
 			{payload && frames.length > 0 && (
@@ -216,10 +235,7 @@ export default function Encryption() {
 			{framePreviews.length > 0 && (
 				<div className="frames">
 					{framePreviews.map((src, i) => (
-						<img
-							key={i}
-							src={src}
-							className="canvas"
+						<img key={i} src={src} className="canvas"
 							style={{ cursor: "pointer", marginBottom: "10px" }}
 							onClick={() => handleFrameClick(frames[i], i)}
 							alt={`Frame ${i}`}

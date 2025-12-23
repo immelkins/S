@@ -1,4 +1,6 @@
+import { Link } from "react-router-dom";
 import "../stylesheets/Project.css"; // import the CSS
+import "../stylesheets/Home.css"; // import the CSS
 
 function Project() {
   return (
@@ -8,6 +10,20 @@ function Project() {
         <p className="project-subtitle">
           Using Per-Frame LSB Encoding to hide information in animated GIFs
         </p>
+
+        <section className="home-cards">
+          <Link to="/" className="home-card-link">
+            <div className="home-card">
+              <h2>Encrypt</h2>
+            </div>
+          </Link>
+
+          <Link to="/decrypt" className="home-card-link">
+            <div className="home-card">
+              <h2>Decrypt</h2>
+            </div>
+          </Link>
+        </section>
       </header>
 
       <section className="project-section">
@@ -79,7 +95,7 @@ function Project() {
           <li>Written report with analysis and findings</li>
           <li>Sample stego-GIFs showing hidden data transmission</li>
         </ul>
-        
+
       </section>
     </div>
   );

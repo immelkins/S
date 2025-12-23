@@ -2,15 +2,15 @@
 import { useState } from "react";
 import ToBits from "./ToBits";
 import Hamming from "hamming-code";
+import "../stylesheets/Upload.css";
 
-const HEADER_BITS = [1,0,1,0,1,0,1,1];
+const HEADER_BITS = [1, 0, 1, 0, 1, 0, 1, 1];
 
 function bitArrayToUint8Array(bits) {
 	const bytes = [];
 	for (let i = 0; i < bits.length; i += 8) {
 		let byte = 0;
-		for (let j = 0; j < 8; j++) 
-			{byte = (byte << 1) | (bits[i + j] || 0);}
+		for (let j = 0; j < 8; j++) { byte = (byte << 1) | (bits[i + j] || 0); }
 		bytes.push(byte);
 	}
 	return new Uint8Array(bytes);
@@ -25,8 +25,7 @@ function extractAllBitsFromFrames(frames) {
 	const allBits = [];
 	for (const frame of frames) {
 		const patch = frame.patch;
-		for (let i = 0; i < patch.length; i += 4) 
-			{allBits.push(patch[i + 2] & 1);}
+		for (let i = 0; i < patch.length; i += 4) { allBits.push(patch[i + 2] & 1); }
 	}
 
 	// Check header
@@ -49,7 +48,7 @@ export default function Decryption() {
 		setGifFile(file);
 
 		ToBits(file)
-			.then(({frames}) => setFrames(frames))
+			.then(({ frames }) => setFrames(frames))
 			.catch((err) => setError(err.message));
 	};
 
@@ -97,9 +96,22 @@ export default function Decryption() {
 	return (
 		<div>
 			<h2>Decrypt GIF Binary Data</h2>
-			<input type="file" accept="image/gif" onChange={handleGIFChange}/>
+			<div className="upload-section">
+				<label className="file-upload">
+					<input
+						type="file"
+						accept="image/gif"
+						onChange={handleGIFChange}
+						hidden
+					/>
+					<span className="file-button">Choose GIF</span>
+					<span className="file-name">
+						{gifFile ? gifFile.name : "No file chosen"}
+					</span>
+				</label>
+			</div>
 			{gifFile && <p>Uploaded GIF: {gifFile.name}</p>}
-			{frames.length > 0 && (<button onClick={handleDownloadMessage}> Download Message </button>)}
+			{frames.length > 0 && (<button className="file-button" onClick={handleDownloadMessage}> Download Message </button>)}
 			{error && <p className="error">{error}</p>}
 		</div>
 	);

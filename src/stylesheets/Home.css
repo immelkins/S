@@ -58,3 +58,16 @@
   line-height: 1.5;
   color: #444444;
 }
+
+.home-card-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.home-card-link:visited,
+.home-card-link:hover,
+.home-card-link:active,
+.home-card-link:focus {
+  text-decoration: none;
+  color: inherit;
+}

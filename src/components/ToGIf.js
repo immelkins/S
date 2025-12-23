@@ -8,7 +8,7 @@ export default async function ToGIF(frames, delay = 100) {
     const gif = new GIF({
       workers: 2,
       quality: 10,                    // lower is better quality
-      workerScript: '/gif.worker.js', // local worker
+      workerScript: process.env.PUBLIC_URL + '/gif.worker.js', // local worker
     });
 
     //Add each frame to the GIF
